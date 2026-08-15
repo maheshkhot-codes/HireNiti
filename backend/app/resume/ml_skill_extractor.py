@@ -3,12 +3,6 @@ from pathlib import Path
 import json
 import re
 
-import torch
-from transformers import (
-    AutoModelForTokenClassification,
-    AutoTokenizer,
-)
-
 
 # ============================================================
 # PATHS
@@ -52,12 +46,10 @@ def load_talent_hive_skills() -> list[str]:
     """
 
     if not SKILLS_FILE.exists():
-
         raise FileNotFoundError(
             f"TalentHive skills file not found:\n"
             f"{SKILLS_FILE}"
         )
-
 
     with SKILLS_FILE.open(
         "r",
@@ -68,21 +60,17 @@ def load_talent_hive_skills() -> list[str]:
             file
         )
 
-
     if not isinstance(
         skills,
         list,
     ):
-
         raise ValueError(
             "talenthive_skills.json must contain a list."
         )
 
-
     result = []
 
     seen = set()
-
 
     for skill in skills:
 
@@ -92,30 +80,23 @@ def load_talent_hive_skills() -> list[str]:
         ):
             continue
 
-
         skill = skill.strip()
-
 
         if not skill:
             continue
 
-
         key = skill.lower()
-
 
         if key in seen:
             continue
-
 
         seen.add(
             key
         )
 
-
         result.append(
             skill
         )
-
 
     return result
 
@@ -140,13 +121,11 @@ def normalize_for_search(
         "\n",
     )
 
-
     value = re.sub(
         r"[ \t]+",
         " ",
         value,
     )
-
 
     return value
 
@@ -177,7 +156,6 @@ def build_skill_pattern(
         skill
     )
 
-
     # --------------------------------------------------------
     # Single-letter C needs special handling.
     # --------------------------------------------------------
@@ -190,7 +168,6 @@ def build_skill_pattern(
             r"(?![A-Za-z0-9+#])",
             re.IGNORECASE,
         )
-
 
     return re.compile(
         rf"(?<![A-Za-z0-9+#])"
@@ -215,17 +192,13 @@ def extract_vocabulary_skills(
     """
 
     if not text or not text.strip():
-
         return []
-
 
     text = normalize_for_search(
         text
     )
 
-
     skills = load_talent_hive_skills()
-
 
     # Longer skills first.
     # This helps prefer:
@@ -238,16 +211,13 @@ def extract_vocabulary_skills(
         reverse=True,
     )
 
-
     matches = []
-
 
     for skill in sorted_skills:
 
         pattern = build_skill_pattern(
             skill
         )
-
 
         for match in pattern.finditer(
             text
@@ -269,7 +239,6 @@ def extract_vocabulary_skills(
                 }
             )
 
-
     # --------------------------------------------------------
     # Sort by start position.
     # Longer match wins when spans overlap.
@@ -282,20 +251,16 @@ def extract_vocabulary_skills(
         )
     )
 
-
     accepted = []
 
     occupied_ranges = []
-
 
     for match in matches:
 
         start = match["start"]
         end = match["end"]
 
-
         overlaps = False
-
 
         for occupied_start, occupied_end in (
             occupied_ranges
@@ -310,15 +275,12 @@ def extract_vocabulary_skills(
 
                 break
 
-
         if overlaps:
             continue
-
 
         accepted.append(
             match
         )
-
 
         occupied_ranges.append(
             (
@@ -327,12 +289,10 @@ def extract_vocabulary_skills(
             )
         )
 
-
     accepted.sort(
         key=lambda item:
             item["start"]
     )
-
 
     return [
         item["canonical"]
@@ -347,10 +307,25 @@ def extract_vocabulary_skills(
 @lru_cache(maxsize=1)
 def load_skill_model():
     """
-    Load the trained DistilBERT model once.
+    Load the trained DistilBERT model only when
+    resume skill extraction actually requires it.
 
-    The model stays in memory after the first request.
+    Heavy ML libraries are imported here rather than
+    at application startup.
+
+    The model stays cached after the first load.
     """
+
+    # --------------------------------------------------------
+    # Heavy imports are intentionally lazy.
+    # --------------------------------------------------------
+
+    import torch
+
+    from transformers import (
+        AutoModelForTokenClassification,
+        AutoTokenizer,
+    )
 
     if not MODEL_DIR.exists():
 
@@ -359,13 +334,11 @@ def load_skill_model():
             f"{MODEL_DIR}"
         )
 
-
     tokenizer = (
         AutoTokenizer.from_pretrained(
             str(MODEL_DIR)
         )
     )
-
 
     model = (
         AutoModelForTokenClassification
@@ -374,9 +347,7 @@ def load_skill_model():
         )
     )
 
-
     model.eval()
-
 
     # --------------------------------------------------------
     # CPU inference
@@ -385,7 +356,6 @@ def load_skill_model():
     model.to(
         torch.device("cpu")
     )
-
 
     return tokenizer, model
 
@@ -404,9 +374,7 @@ def extract_model_skills_from_window(
     """
 
     if not text.strip():
-
         return []
-
 
     encoding = tokenizer(
         text,
@@ -416,15 +384,17 @@ def extract_model_skills_from_window(
         return_offsets_mapping=True,
     )
 
-
     offsets = encoding.pop(
         "offset_mapping"
     )
 
-
     # --------------------------------------------------------
     # Model inference
     # --------------------------------------------------------
+
+    # Import torch lazily here as well so importing this
+    # module alone never loads PyTorch.
+    import torch
 
     with torch.no_grad():
 
@@ -432,24 +402,20 @@ def extract_model_skills_from_window(
             **encoding
         )
 
-
     probabilities = torch.softmax(
         outputs.logits,
         dim=-1,
     )
-
 
     predictions = torch.argmax(
         probabilities,
         dim=-1,
     )[0].tolist()
 
-
     confidences = torch.max(
         probabilities,
         dim=-1,
     )[0][0].tolist()
-
 
     # --------------------------------------------------------
     # Build text spans
@@ -461,7 +427,6 @@ def extract_model_skills_from_window(
 
     current_end = None
 
-
     for prediction, confidence, offset in zip(
         predictions,
         confidences,
@@ -470,17 +435,14 @@ def extract_model_skills_from_window(
 
         start, end = offset
 
-
         # Special token
         if start == end:
             continue
-
 
         label = model.config.id2label.get(
             int(prediction),
             "O",
         )
-
 
         # ----------------------------------------------------
         # Ignore low-confidence predictions.
@@ -497,19 +459,16 @@ def extract_model_skills_from_window(
                     current_start:current_end
                 ].strip()
 
-
                 if skill:
 
                     skills.append(
                         skill
                     )
 
-
             current_start = None
             current_end = None
 
             continue
-
 
         # ----------------------------------------------------
         # B-SKILL
@@ -526,18 +485,15 @@ def extract_model_skills_from_window(
                     current_start:current_end
                 ].strip()
 
-
                 if skill:
 
                     skills.append(
                         skill
                     )
 
-
             current_start = start
 
             current_end = end
-
 
         # ----------------------------------------------------
         # I-SKILL
@@ -548,7 +504,6 @@ def extract_model_skills_from_window(
             if current_start is not None:
 
                 current_end = end
-
 
         # ----------------------------------------------------
         # Outside
@@ -565,18 +520,15 @@ def extract_model_skills_from_window(
                     current_start:current_end
                 ].strip()
 
-
                 if skill:
 
                     skills.append(
                         skill
                     )
 
-
             current_start = None
 
             current_end = None
-
 
     # --------------------------------------------------------
     # Flush final skill
@@ -591,13 +543,11 @@ def extract_model_skills_from_window(
             current_start:current_end
         ].strip()
 
-
         if skill:
 
             skills.append(
                 skill
             )
-
 
     return skills
 
@@ -617,14 +567,11 @@ def extract_model_skills(
     """
 
     if not text or not text.strip():
-
         return []
-
 
     tokenizer, model = (
         load_skill_model()
     )
-
 
     # --------------------------------------------------------
     # Determine token count
@@ -638,7 +585,6 @@ def extract_model_skills(
         "input_ids"
     ]
 
-
     if len(token_ids) <= MAX_MODEL_LENGTH:
 
         return extract_model_skills_from_window(
@@ -647,21 +593,16 @@ def extract_model_skills(
             model,
         )
 
-
     # --------------------------------------------------------
     # Sliding windows
     # --------------------------------------------------------
 
     all_skills = []
 
-
     words = text.split()
 
-
     if not words:
-
         return []
-
 
     # Estimate overlapping word windows for resumes.
     #
@@ -671,9 +612,7 @@ def extract_model_skills(
 
     stride_words = 200
 
-
     start = 0
-
 
     while start < len(words):
 
@@ -682,11 +621,9 @@ def extract_model_skills(
             len(words),
         )
 
-
         window_text = " ".join(
             words[start:end]
         )
-
 
         window_skills = (
             extract_model_skills_from_window(
@@ -696,19 +633,14 @@ def extract_model_skills(
             )
         )
 
-
         all_skills.extend(
             window_skills
         )
 
-
         if end >= len(words):
-
             break
 
-
         start += stride_words
-
 
     return all_skills
 
@@ -728,7 +660,6 @@ def deduplicate_skills(
 
     seen = set()
 
-
     for skill in skills:
 
         if not isinstance(
@@ -737,30 +668,23 @@ def deduplicate_skills(
         ):
             continue
 
-
         skill = skill.strip()
-
 
         if not skill:
             continue
 
-
         key = skill.lower()
-
 
         if key in seen:
             continue
-
 
         seen.add(
             key
         )
 
-
         result.append(
             skill
         )
-
 
     return result
 
@@ -773,7 +697,7 @@ def extract_ml_skills(
     text: str,
 ) -> list[str]:
     """
-    Hybrid TalentHive skill extraction.
+    Hybrid HireNiti skill extraction.
 
     Stage 1:
         DistilBERT contextual extraction.
@@ -790,9 +714,7 @@ def extract_ml_skills(
     """
 
     if not text or not text.strip():
-
         return []
-
 
     # --------------------------------------------------------
     # MODEL
@@ -801,7 +723,6 @@ def extract_ml_skills(
     model_skills = extract_model_skills(
         text
     )
-
 
     # --------------------------------------------------------
     # VOCABULARY
@@ -812,7 +733,6 @@ def extract_ml_skills(
             text
         )
     )
-
 
     # --------------------------------------------------------
     # MERGE
@@ -827,7 +747,6 @@ def extract_ml_skills(
     combined.extend(
         vocabulary_skills
     )
-
 
     # --------------------------------------------------------
     # Deduplicate

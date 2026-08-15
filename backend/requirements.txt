@@ -9,7 +9,12 @@ pwdlib[argon2]
 supabase
 PyMuPDF
 python-docx
-sentence-transformers
 pgvector
 email-validator
 xgboost
+
+# CPU-only PyTorch
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.12.1
+
+sentence-transformers
