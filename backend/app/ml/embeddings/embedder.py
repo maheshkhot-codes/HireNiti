@@ -1,26 +1,41 @@
+from functools import lru_cache
+
 from sentence_transformers import SentenceTransformer
 
 
-# ---------------------------------------------------------
-# Embedding model
-# ---------------------------------------------------------
+# ============================================================
+# EMBEDDING MODEL
+# ============================================================
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
 
-# Load the model once when the application starts.
-# We do not want to load it for every request.
-model = SentenceTransformer(MODEL_NAME)
+@lru_cache(maxsize=1)
+def get_embedding_model() -> SentenceTransformer:
+    """
+    Load the embedding model only when it is actually needed.
+
+    The @lru_cache decorator makes sure the model is loaded
+    only once per application process.
+    """
+
+    return SentenceTransformer(
+        MODEL_NAME
+    )
 
 
-# ---------------------------------------------------------
-# Generate embedding for one piece of text
-# ---------------------------------------------------------
+# ============================================================
+# GENERATE ONE EMBEDDING
+# ============================================================
 
-def generate_embedding(text: str) -> list[float]:
+def generate_embedding(
+    text: str
+) -> list[float]:
 
     if not text or not text.strip():
         return []
+
+    model = get_embedding_model()
 
     embedding = model.encode(
         text,
@@ -30,9 +45,9 @@ def generate_embedding(text: str) -> list[float]:
     return embedding.tolist()
 
 
-# ---------------------------------------------------------
-# Generate embeddings for multiple texts
-# ---------------------------------------------------------
+# ============================================================
+# GENERATE MULTIPLE EMBEDDINGS
+# ============================================================
 
 def generate_embeddings(
     texts: list[str]
@@ -41,11 +56,14 @@ def generate_embeddings(
     cleaned_texts = [
         text.strip()
         for text in texts
-        if text and text.strip()
+        if isinstance(text, str)
+        and text.strip()
     ]
 
     if not cleaned_texts:
         return []
+
+    model = get_embedding_model()
 
     embeddings = model.encode(
         cleaned_texts,
@@ -53,6 +71,11 @@ def generate_embeddings(
     )
 
     return embeddings.tolist()
+
+
+# ============================================================
+# COSINE SIMILARITY
+# ============================================================
 
 def cosine_similarity(
     vector_a: list[float],
