@@ -1,0 +1,210 @@
+# ============================================================
+# HireNiti - GITIGNORE
+# ============================================================
+
+
+# ============================================================
+# ENVIRONMENT / SECRETS
+# ============================================================
+
+.env
+.env.*
+!.env.example
+
+backend/.env
+frontend/.env
+
+
+# ============================================================
+# PYTHON
+# ============================================================
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+
+# ============================================================
+# NODE / FRONTEND
+# ============================================================
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# ============================================================
+# IDE / EDITOR
+# ============================================================
+
+.vscode/
+.idea/
+*.iml
+
+
+# ============================================================
+# OPERATING SYSTEM
+# ============================================================
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# ============================================================
+# LOGS / TEMPORARY FILES
+# ============================================================
+
+*.log
+*.tmp
+*.temp
+*.bak
+
+
+# ============================================================
+# PYTHON CACHE / GENERATED FILES
+# ============================================================
+
+backend/**/__pycache__/
+backend/**/*.pyc
+
+
+# ============================================================
+# HUGGING FACE / ML CACHE
+# ============================================================
+
+.cache/
+.cache/huggingface/
+.huggingface/
+**/.cache/
+
+
+# ============================================================
+# RESUME TRAINING DATASETS
+# ============================================================
+
+# Raw downloaded resume datasets
+backend/data/resume_extraction/raw/
+
+# Generated training datasets
+backend/data/resume_extraction/train.jsonl
+backend/data/resume_extraction/validation.jsonl
+backend/data/resume_extraction/test.jsonl
+
+backend/data/resume_extraction/train_bio.jsonl
+backend/data/resume_extraction/validation_bio.jsonl
+backend/data/resume_extraction/test_bio.jsonl
+
+
+# ============================================================
+# ESCO / LARGE TAXONOMY SOURCE DATA
+# ============================================================
+
+backend/data/taxonomy/esco/
+
+
+# ============================================================
+# LARGE TRAINING CHECKPOINTS
+# ============================================================
+
+backend/models/skill_extractor/checkpoint-*/*
+
+
+# ============================================================
+# TRAINING CHECKPOINT ARTIFACTS
+# ============================================================
+
+backend/models/skill_extractor/*/optimizer.pt
+backend/models/skill_extractor/*/scheduler.pt
+backend/models/skill_extractor/*/rng_state.pth
+backend/models/skill_extractor/*/trainer_state.json
+
+
+# ============================================================
+# KEEP THESE MODEL FILES
+# ============================================================
+#
+# The following final trained model files are intentionally
+# NOT ignored:
+#
+# backend/models/skill_extractor/config.json
+# backend/models/skill_extractor/model.safetensors
+# backend/models/skill_extractor/tokenizer.json
+# backend/models/skill_extractor/tokenizer_config.json
+# backend/models/skill_extractor/training_args.bin
+# backend/models/skill_extractor/training_metrics.json
+# backend/models/skill_extractor/evaluation_metrics.json
+#
+# model.safetensors is tracked through Git LFS.
+# ============================================================
+
+
+# ============================================================
+# OTHER GENERATED MODEL FILES
+# ============================================================
+
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.keras
+
+
+# ============================================================
+# DATABASE / LOCAL STORAGE
+# ============================================================
+
+*.sqlite
+*.sqlite3
+*.db
+
+
+# ============================================================
+# COVERAGE / TEST OUTPUT
+# ============================================================
+
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+
+
+# ============================================================
+# BUILD OUTPUT
+# ============================================================
+
+build/
+dist/
+*.egg-info/
+
+
+# ============================================================
+# JUPYTER
+# ============================================================
+
+.ipynb_checkpoints/
+
+
+# ============================================================
+# OS / TEMP
+# ============================================================
+
+*.swp
+*.swo
